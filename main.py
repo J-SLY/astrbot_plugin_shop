@@ -1,24 +1,79 @@
 from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
 from astrbot.api.star import Context, Star, register
+from astrbot.api import AstrBotConfig
 from astrbot.api import logger
-
-@register("helloworld", "YourName", "一个简单的 Hello World 插件", "1.0.0")
+from datetime import date, timedelta ,datetime
+import astrbot.api.message_components as Comp
 class MyPlugin(Star):
-    def __init__(self, context: Context):
+    def __init__(self, context: Context, config:AstrBotConfig):
         super().__init__(context)
-
+        self.config = config
+        self.isUseLlmRemind = self.config.get("isUseLlmToRemind",False)
+        if self.isUseLlmRemind == True:
+            self.llmProvider = self.config.get("llmProvider",False)
+            self.llmPrompt = self.config.get("llmPrompt","")
+        else:
+            self.remindSentence = self.config.get("remindSentence","")
+        self.isOpenUserLevel = self.config.get("isOpenUserLevel",True)
+        self.startMoney = self.config.get("startMoney",1000)
+        self.qdMoney=self.config.get("qdMoney",1000)
+        self.makeLess=self.config.get("makeLess",500)
     async def initialize(self):
         """可选择实现异步的插件初始化方法，当实例化该插件类之后会自动调用该方法。"""
 
-    # 注册指令的装饰器。指令名为 helloworld。注册成功后，发送 `/helloworld` 就会触发这个指令，并回复 `你好, {user_name}!`
-    @filter.command("helloworld")
-    async def helloworld(self, event: AstrMessageEvent):
-        """这是一个 hello world 指令""" # 这是 handler 的描述，将会被解析方便用户了解插件内容。建议填写。
-        user_name = event.get_sender_name()
-        message_str = event.message_str # 用户发的纯文本消息字符串
-        message_chain = event.get_messages() # 用户所发的消息的消息链 # from astrbot.api.message_components import *
-        logger.info(message_chain)
-        yield event.plain_result(f"Hello, {user_name}, 你发了 {message_str}!") # 发送一条纯文本消息
-
+    
+    @filter.command("qd",alias={"签到","每日签到","CheckIn"})
+    async def qd(self, event: AstrMessageEvent):
+        """这是一个签到指令"""
+        userId=event.get_sender_id()
+        isRegister = await self.get_kv_data(f"is{userId}Register",False)
+        lastQdDate = await self.get_kv_data(f"{userId}LastQd",False)
+        todayDate = date.today()
+        if isRegister == True:#如果已注册
+            if lastQdDate == todayDate:#如果上一次签到日期等于今天日期（即已签到）
+                if self.isUseLlmRemind == True:#如果开启LLM提示语
+                    useLlmToRemind= await self.context.llm_generate(
+                        chat_provider_id = self.llmProvider,
+                        prompt = self.llmPrompt,
+                    )
+                    yield event.plain_result(useLlmToRemind.completion_text)
+                else:#发送固定提示语
+                    yield event.plain_result(self.remindSentence)
+            else:#签到逻辑
+                userMoney:int = await self.get_kv_data(f"{userId}Money",0)
+                userMoney += self.qdMoney
+                await self.put_kv_data(f"{userId}Money",userMoney)
+                sendText = [
+                    Comp.At(f"{userId}"),
+                    Comp.Plain(f" 签到成功，余额+{self.qdMoney}")
+                ]
+                yield event.chain_result(sendText)
+        else:#注册+签到
+            remindRegister=[
+                Comp.At(f"{userId}"),
+                Comp.Plain(f" 用户未注册，已自动注册，初始账户余额为{self.startMoney}\n目前总金额为{self.startMoney+self.qdMoney}")
+            ]
+            await self.put_kv_data(f"is{userId}Register",True)
+            await self.put_kv_data(f"{userId}Money",self.qdMoney+self.startMoney)
+            yield event.chain_result(remindRegister)
+    @filter.command("rg",alias={"register"})
+    async def register(self,event:AstrMessageEvent):
+        userId=event.get_sender_id()
+        isRegister = await self.get_kv_data(f"is{userId}Register",False)
+        if isRegister == False:
+            await self.put_kv_data(f"is{userId}Register",True)
+            await self.put_kv_data(f"{userId}Money",self.startMoney)
+            tellRegister=[
+                Comp.At(f"{userId}"),
+                Comp.Plain(f" 注册成功，初始账户余额{self.startMoney}")
+            ]
+            yield event.chain_result(tellRegister)
+        else:
+            userMoney = await self.get_kv_data(f"{userId}Money",0)
+            userMoney -= self.makeLess
+            await self.put_kv_data(f"{userId}Money",userMoney)
+            yield event.plain_result(f"你已经注册过了，为了惩罚你浪费资源，现扣除你{self.makeLess}")
+    
+    @filter.command
     async def terminate(self):
         """可选择实现异步的插件销毁方法，当插件被卸载/停用时会调用。"""
