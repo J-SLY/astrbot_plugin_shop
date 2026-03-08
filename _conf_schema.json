@@ -1,0 +1,36 @@
+{
+    "isUseLlmToRemind":{
+        "description": "当用户重复签到时是否调用LLM生成提示",
+        "type":"bool"
+    },
+    "llmProvider":{
+        "description":"LLM模型提供商",
+        "type":"string",
+        "_special": "select_provider"
+    },
+    "llmPrompt":{
+        "description":"调用LLM的提示词",
+        "type":"string"
+    },
+    "remindSentence":{
+        "description":"提示语句",
+        "hint":"如果不使用LLM发送的提示语句，将会发送本配置项",
+        "type":"string"
+    },
+    "qdMoney":{
+        "description":"签到奖励",
+        "type":"int",
+        "default":1000
+    },
+    "startMoney":{
+        "description":"初始余额",
+        "type":"int",
+        "default":1000
+    },
+    "makeLess":{
+        "description":"惩罚金额",
+        "hint":"当用户已注册时仍使用注册指令的惩罚金额",
+        "type":"int",
+        "default":500
+    }
+}
