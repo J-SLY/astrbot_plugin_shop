@@ -43,18 +43,21 @@ class MyPlugin(Star):
                 userMoney:int = await self.get_kv_data(f"{userId}Money",0)
                 userMoney += self.qdMoney
                 await self.put_kv_data(f"{userId}Money",userMoney)
+                await self.put_kv_data(f"{userId}LastQd",todayDate)
                 sendText = [
-                    Comp.At(qq=userId),
+                    Comp.At(f"{userId}"),
                     Comp.Plain(f" 签到成功，余额+{self.qdMoney}")
                 ]
                 yield event.chain_result(sendText)
+                
         else:#注册+签到
             remindRegister=[
-                Comp.At(qq=userId),
+                Comp.At(f"{userId}"),
                 Comp.Plain(f" 用户未注册，已自动注册，初始账户余额为{self.startMoney}\n目前总金额为{self.startMoney+self.qdMoney}")
             ]
             await self.put_kv_data(f"is{userId}Register",True)
             await self.put_kv_data(f"{userId}Money",self.qdMoney+self.startMoney)
+            await self.put_kv_data(f"{userId}LastQd",todayDate)
             yield event.chain_result(remindRegister)
     @filter.command("rg",alias={"register"})
     async def register(self,event:AstrMessageEvent):
@@ -64,7 +67,7 @@ class MyPlugin(Star):
             await self.put_kv_data(f"is{userId}Register",True)
             await self.put_kv_data(f"{userId}Money",self.startMoney)
             tellRegister=[
-                Comp.At(qq=userId),
+                Comp.At(f"{userId}"),
                 Comp.Plain(f" 注册成功，初始账户余额{self.startMoney}")
             ]
             yield event.chain_result(tellRegister)
