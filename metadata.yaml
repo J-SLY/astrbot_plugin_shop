@@ -1,6 +1,6 @@
 name: astrbot_plugin_shop 
 display_name: 群积分系统
 desc: 每日签到领取积分，管理员可添加商品供用户购买
-version: v1.0.0
+version: v1.0.1
 author: J-SLY
 repo: https://github.com/J-SLY/astrbot_plugin_shop 
