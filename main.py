@@ -30,7 +30,7 @@ class MyPlugin(Star):
         lastQdDate = await self.get_kv_data(f"{userId}LastQd",False)
         todayDate = date.today()
         if isRegister == True:#如果已注册
-            if lastQdDate == todayDate:#如果上一次签到日期等于今天日期（即已签到）
+            if lastQdDate == todayDate.isoformat():#如果上一次签到日期等于今天日期（即已签到）
                 if self.isUseLlmRemind == True:#如果开启LLM提示语
                     useLlmToRemind= await self.context.llm_generate(
                         chat_provider_id = self.llmProvider,
